@@ -6,6 +6,7 @@ ruby '3.2.2'
 gem 'bootsnap', require: false
 gem 'nokogiri'
 gem 'pg', '~> 1.1'
+gem 'pry-byebug'
 gem 'puma', '~> 5.0'
 gem 'rack-cors'
 gem 'rails', '~> 7.0.4', '>= 7.0.4.3'

@@ -2,6 +2,7 @@ class CreateGames < ActiveRecord::Migration[7.0]
   def change
     create_table :games do |t|
       t.belongs_to :team
+      t.belongs_to :leader
       t.date :date
       t.string :opponent
       t.boolean :game_won

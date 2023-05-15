@@ -1,5 +1,5 @@
 module Ingest
-  class Team < Service
+  class TeamRecord < Service
     def initialize(team:)
       @team = team
     end

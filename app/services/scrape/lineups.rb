@@ -6,6 +6,7 @@ module Scrape
       # @url = URI.parse('https://www.basketball-reference.com/teams/PHO/2022_start.html')
       @url = "https://www.basketball-reference.com/teams/#{team.upcase}/#{year}_start.html"
       @team = team
+      @year = year
     end
 
     def call
@@ -13,12 +14,16 @@ module Scrape
       team = parse_team_info(doc)
       coach = parse_coach_info(doc)
       parse_games(doc, team, coach, false)
+      playoffs = doc.css('#starting_lineups_po1').empty?
+      return if playoffs
+
+      parse_games(doc, team, coach, true)
       puts 'Scraping completed!'
     end
 
     def load_html(url)
       url = URI.parse(url)
-      sleep 1
+      sleep 3.15
       http = Net::HTTP.new(url.host, url.port)
       http.use_ssl = (url.scheme == 'https')
       request = Net::HTTP::Get.new(url.request_uri)
@@ -32,7 +37,7 @@ module Scrape
 
       starting_lineups_table = doc.css("#starting_lineups_po#{playoffs ? 1 : 0}")
       starting_lineups_table.css('tbody tr').each do |row|
-        game = parse_game_info(row, coach, team)
+        game = parse_game_info(row, coach, team, playoffs)
 
         # now get starting lineups
         row.css('[data-stat="game_starters"] a').map do |a|
@@ -49,27 +54,30 @@ module Scrape
     def parse_coach_info(doc)
       coach_element = doc.css("p:contains('Coach:')")
       coach_name = coach_element.css('a').text
-      puts coach_element
       coach_url = coach_element.css('a').first['href'].to_s
 
-      coach = Leader.find_by(name: coach_name, url: coach_url)
+      coach = Leader.find_by(url: coach_url)
       return coach unless coach.nil?
 
-      sleep 1
+      sleep 3.2
+      puts "looking up #{coach_url}"
       doc = load_html("https://www.basketball-reference.com#{coach_url}")
-      headshot_url = doc.css('#meta img').first['src']
+      headshot_div = doc.at_css('#meta img')
+      headshot_url = headshot_div ? doc.css('#meta img').first['src'] : nil
 
       Leader.create(name: coach_name, headshot_url:, url: coach_url)
     end
 
     def parse_player_info(player_url, short_name)
-      starter = Player.find_by(short_name:, reference_url: player_url)
+      starter = Player.find_by(reference_url: player_url)
       return starter unless starter.nil?
 
-      sleep 1
+      sleep 3.1
+      puts "looking up #{player_url}"
       doc = load_html("https://www.basketball-reference.com#{player_url}")
       name = doc.css('#meta h1 span').text
-      headshot_url = doc.css('#meta img').first['src']
+      headshot_div = doc.at_css('#meta img')
+      headshot_url = headshot_div ? doc.css('#meta img').first['src'] : nil
 
       Player.create(reference_url: player_url, short_name:, name:, headshot_url:)
     end
@@ -82,7 +90,7 @@ module Scrape
       Team.create(abbreviation: @team, name: team_name)
     end
 
-    def parse_game_info(row, coach, team)
+    def parse_game_info(row, coach, team, playoffs)
       date = Date.parse(row.css('[data-stat="date_game"] a').text)
       opponent = row.css('[data-stat="opp_name"] a').text
       win_status = row.css('[data-stat="game_result"]').text
@@ -95,8 +103,8 @@ module Scrape
       return game_exists unless game_exists.nil?
 
       game = Game.new(
-        date:, opponent:, game_won: win_status == 'W', team_points:,
-        opponent_points:, win:, loss:, leader_id: coach.id, team_id: team.id
+        date:, opponent:, game_won: win_status == 'W', team_points:, year: @year,
+        opponent_points:, win:, loss:, leader_id: coach.id, team_id: team.id, playoffs:
       )
 
       begin

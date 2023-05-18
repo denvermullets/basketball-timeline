@@ -15,10 +15,11 @@ module Scrape
       coach = parse_coach_info(doc)
       parse_games(doc, team, coach, false)
       playoffs = doc.css('#starting_lineups_po1').empty?
+      puts 'Regular Season completed!'
       return if playoffs
 
       parse_games(doc, team, coach, true)
-      puts 'Scraping completed!'
+      puts 'Playoffs completed!'
     end
 
     def load_html(url)

@@ -39,6 +39,7 @@ module Scrape
       starting_lineups_table = doc.css("#starting_lineups_po#{playoffs ? 1 : 0}")
       starting_lineups_table.css('tbody tr').each do |row|
         game = parse_game_info(row, coach, team, playoffs)
+        next if game.nil?
 
         # now get starting lineups
         row.css('[data-stat="game_starters"] a').map do |a|
@@ -99,6 +100,8 @@ module Scrape
       opponent_points = row.css('[data-stat="opp_pts"]').text
       win = row.css('[data-stat="wins"]').text
       loss = row.css('[data-stat="losses"]').text
+      # bballref lists games in the table even if they haven't happened yet
+      return nil if win.nil?
 
       game_exists = Game.find_by(date:, opponent:, team_points:, team_id: team.id, leader_id: coach.id)
       return game_exists unless game_exists.nil?

@@ -4,6 +4,7 @@ Rails.application.routes.draw do
       resources :ingest_stats
 
       resources :starting_stats
+      resources :teams
     end
   end
 end
